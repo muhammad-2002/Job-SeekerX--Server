@@ -28,12 +28,46 @@ async function run() {
    
     const database = client.db("JobSeekerX");
     const jobCollection = database.collection('Job_Catagories');
+    const ApplyCollection = database.collection('Applyed-job');
 
     app.get('/jobs',async(req,res)=>{
         const result = await jobCollection.find().toArray()
         res.send(result)
     })
+    // Assuming you already have the necessary imports and setup for Express and MongoDB
 
+// Define the route to handle job applications
+app.put('/jobs/:id/apply', async (req, res) => {
+  const jobId = req.params.id;
+
+  try {
+    // Find the job by its ID
+    const job = await jobCollection.findOne({ _id: ObjectId(jobId) });
+
+    if (!job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    // Increment the applicants_number field by 1 using the $inc operator
+    const updatedJob = await jobCollection.findOneAndUpdate(
+      { _id: ObjectId(jobId) },
+      { $inc: { applicants_number: 1 } },
+      { returnOriginal: false }
+    );
+
+    // Return the updated job document
+    res.json(updatedJob.value);
+  } catch (error) {
+    console.error('Error applying for job:', error);
+    res.status(500).json({ error: 'Failed to apply for job' });
+  }
+ });
+    app.get('/applied-job',async(req,res)=>{
+        const result = await ApplyCollection.find().toArray()
+        console.log(result)
+        res.send(result)
+    })
+    
     app.get('/jobs/:id',async(req,res)=>{
         const job = req.params.id
         const query = {_id:new ObjectId(job)}
@@ -41,7 +75,12 @@ async function run() {
       
         res.send(result)
     })
+app.post('/apply-job',async(req,res)=>{
+  const job =req.body
+  const result = await ApplyCollection.insertOne(job)
+  res.send(result)
 
+})
     app.post('/jobs',async(req,res)=>{
       const jobs =req.body
       console.log(jobs)

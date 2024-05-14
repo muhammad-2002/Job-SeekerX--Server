@@ -58,13 +58,13 @@ app.put('/jobs/:id/apply', async (req, res) => {
     // Return the updated job document
     res.json(updatedJob.value);
   } catch (error) {
-    console.error('Error applying for job:', error);
+   
     res.status(500).json({ error: 'Failed to apply for job' });
   }
  });
     app.get('/applied-job',async(req,res)=>{
         const result = await ApplyCollection.find().toArray()
-        console.log(result)
+        console.log(res)
         res.send(result)
     })
     
@@ -75,6 +75,27 @@ app.put('/jobs/:id/apply', async (req, res) => {
       
         res.send(result)
     })
+app.delete('/jobs/:id',(req,res)=>{
+  const id = req.params.id
+  const query = {_id:new ObjectId(id)}
+  const result = jobCollection.deleteOne(query)
+  res.send(result)
+})
+    app.get('/my-jobs/:email', async (req, res) => {
+      try {
+          const email = req.params.email;
+          const query = { userEmail: email };
+          const cursor = await jobCollection.find(query).toArray();
+          if (cursor.length > 0) {
+              res.send(cursor);
+          } else {
+              res.status(404).send("No items found for the provided email address");
+          }
+      } catch (error) {
+          console.error(error);
+          res.status(500).send("Internal Server Error");
+      }
+  });
 app.post('/apply-job',async(req,res)=>{
   const job =req.body
   const result = await ApplyCollection.insertOne(job)
@@ -83,7 +104,6 @@ app.post('/apply-job',async(req,res)=>{
 })
     app.post('/jobs',async(req,res)=>{
       const jobs =req.body
-      console.log(jobs)
       const result = await jobCollection.insertOne(jobs)
       res.send(result)
     })

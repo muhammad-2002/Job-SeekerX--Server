@@ -106,6 +106,11 @@ app.post('/jwt',(req,res)=>{
 
 })
 
+app.post('/logout',(req,res)=>{
+  const token = req.body.cookie
+  res.clearCookie('token', { ...cookieOptions, maxAge: 0 }).send({status:true})
+})
+
     app.put("/update/:id", async (req, res) => {
       try {
         const id = req.params.id;

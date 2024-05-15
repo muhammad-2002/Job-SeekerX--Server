@@ -36,11 +36,13 @@ const client = new MongoClient(uri, {
 //my middleware
 const verifyToken =(req,res,next)=>{
   const token =req.cookies?.token
+ 
   if(!token){
     return res.status(401).send('unAuthorize')
   }
-  jwt.verify(token,process.env.JWT_SERECT,(err,decoded)=>{
+  jwt.verify(token,process.env.COOKIE_SERECT,(err,decoded)=>{
     if(err){
+      
       res.status(401).send('unAuthorize')
     }
     req.user = decoded
@@ -95,18 +97,15 @@ async function run() {
       }
     });
     /// jwt implement
-app.post('/jwt',(req,res)=>{
-  const user = req.body
-  
-  
-  const token =jwt.sign(user,process.env.COOKIE_SERECT,{expiresIn:'1h'})
-  res
-  .cookie(token)
-  .send({status:true})
-
-})
-
-app.post('/logout',(req,res)=>{
+    app.post('/jwt',(req,res)=>{
+      const user = req.body
+      const token = jwt.sign(user,process.env.COOKIE_SERECT,{expiresIn:'1h'})
+      res.
+      cookie('token',token,cookieOptions)
+      .send({status:true})
+    
+    })
+app.get('/logout',(req,res)=>{
   const token = req.body.cookie
   res.clearCookie('token', { ...cookieOptions, maxAge: 0 }).send({status:true})
 })
@@ -153,9 +152,14 @@ app.post('/logout',(req,res)=>{
       const result = jobCollection.deleteOne(query);
       res.send(result);
     });
-    app.get("/my-jobs/:email", async (req, res) => {
+    app.get("/my-jobs/:email",verifyToken, async (req, res) => {
       try {
         const email = req.params.email;
+        const tokenEmail =req.user.email
+        if(email!== tokenEmail){
+          return res.status(403).send({message:'forbidden access'})
+
+        }
         const query = { userEmail: email };
         const cursor = await jobCollection.find(query).toArray();
         res.send(cursor);

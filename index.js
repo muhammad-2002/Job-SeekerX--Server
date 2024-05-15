@@ -3,7 +3,7 @@ const dotenv = require("dotenv");
 dotenv.config();
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const cookieParser =require('cookie-parser')
+const cookieParser = require("cookie-parser");
 const port = process.env.PORT || 3000;
 
 const app = express();
@@ -34,30 +34,28 @@ const client = new MongoClient(uri, {
 });
 
 //my middleware
-const verifyToken =(req,res,next)=>{
-  const token =req.cookies?.token
- 
-  if(!token){
-    return res.status(401).send('unAuthorize')
-  }
-  jwt.verify(token,process.env.COOKIE_SERECT,(err,decoded)=>{
-    if(err){
-      
-      res.status(401).send('unAuthorize')
-    }
-    req.user = decoded
-    next()
-  })
+const verifyToken = (req, res, next) => {
+  const token = req.cookies?.token;
 
-}
+  if (!token) {
+    return res.status(401).send("unAuthorize");
+  }
+  jwt.verify(token, process.env.COOKIE_SERECT, (err, decoded) => {
+    if (err) {
+      console.log("kisser", err);
+      res.status(401).send("unAuthorize");
+    }
+    req.user = decoded;
+    next();
+  });
+};
 
 const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
 };
-app.use(cookieParser())
-
+app.use(cookieParser());
 
 async function run() {
   try {
@@ -97,18 +95,19 @@ async function run() {
       }
     });
     /// jwt implement
-    app.post('/jwt',(req,res)=>{
-      const user = req.body
-      const token = jwt.sign(user,process.env.COOKIE_SERECT,{expiresIn:'1h'})
-      res.
-      cookie('token',token,cookieOptions)
-      .send({status:true})
-    
-    })
-app.get('/logout',(req,res)=>{
-  const token = req.body.cookie
-  res.clearCookie('token', { ...cookieOptions, maxAge: 0 }).send({status:true})
-})
+    app.post("/jwt", (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.COOKIE_SERECT, {
+        expiresIn: "1h",
+      });
+      res.cookie("token", token, cookieOptions).send({ status: true });
+    });
+    app.get("/logout", (req, res) => {
+      const token = req.body.cookie;
+      res
+        .clearCookie("token", { ...cookieOptions, maxAge: 0 })
+        .send({ status: true });
+    });
 
     app.put("/update/:id", async (req, res) => {
       try {
@@ -128,7 +127,6 @@ app.get('/logout',(req,res)=>{
         );
         res.send(result);
       } catch (error) {
-        console.error(error);
         res.status(500).send("Internal Server Error");
       }
     });
@@ -152,19 +150,13 @@ app.get('/logout',(req,res)=>{
       const result = jobCollection.deleteOne(query);
       res.send(result);
     });
-    app.get("/my-jobs/:email",verifyToken, async (req, res) => {
+    app.get("/my-jobs/:email", async (req, res) => {
       try {
-        const email = req.params.email;
-        const tokenEmail =req.user.email
-        if(email!== tokenEmail){
-          return res.status(403).send({message:'forbidden access'})
-
-        }
+        const email = req.params.email; 
         const query = { userEmail: email };
         const cursor = await jobCollection.find(query).toArray();
         res.send(cursor);
       } catch (error) {
-        console.error(error);
         res.status(500).send("Internal Server Error");
       }
     });
@@ -172,6 +164,19 @@ app.get('/logout',(req,res)=>{
       const job = req.body;
       const result = await ApplyCollection.insertOne(job);
       res.send(result);
+    });
+    app.patch("/apply-job", async (req, res) => {
+      const job = req.body;
+      const id = job._id
+      console.log(job)
+      const updatedJob = await jobCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $inc: { applicants_number: 1 } },
+        { returnOriginal: false }
+      );
+      res.send(updatedJob)
+     
+      
     });
     app.post("/jobs", async (req, res) => {
       const jobs = req.body;

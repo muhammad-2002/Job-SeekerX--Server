@@ -22,6 +22,7 @@ app.use(
 );
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const e = require("express");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.iwngqer.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -34,26 +35,26 @@ const client = new MongoClient(uri, {
 });
 
 //my middleware
-const verifyToken = (req, res, next) => {
-  const token = req.cookies?.token;
+// const verifyToken = (req, res, next) => {
+//   const token = req.cookies?.token;
 
-  if (!token) {
-    return res.status(401).send("unAuthorize");
-  }
-  jwt.verify(token, process.env.COOKIE_SERECT, (err, decoded) => {
-    if (err) {
-      console.log("kisser", err);
-      res.status(401).send("unAuthorize");
-    }
-    req.user = decoded;
-    next();
-  });
-};
+//   if (!token) {
+//     return res.status(401).send("unAuthorize");
+//   }
+//   jwt.verify(token, process.env.COOKIE_SERECT, (err, decoded) => {
+//     if (err) {
+//       console.log("kisser", err);
+//       res.status(401).send("unAuthorize");
+//     }
+//     req.user = decoded;
+//     next();
+//   });
+// };
 
-const cookieOptions = {
+const cookeOption = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
   sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+  secure: process.env.NODE_ENV === "production" ? true : false,
 };
 app.use(cookieParser());
 
@@ -62,6 +63,7 @@ async function run() {
     const database = client.db("JobSeekerX");
     const jobCollection = database.collection("Job_Catagories");
     const ApplyCollection = database.collection("Applyed-job");
+    const usersCollection = database.collection("users");
 
     app.get("/jobs", async (req, res) => {
       const result = await jobCollection.find().toArray();
@@ -95,19 +97,23 @@ async function run() {
       }
     });
     /// jwt implement
-    app.post("/jwt", (req, res) => {
+    app.post("/jwt", async (req, res) => {
       const user = req.body;
-      const token = jwt.sign(user, process.env.COOKIE_SERECT, {
+     
+      const token = jwt.sign(user, process.env.COOKIE_SERECT,{
         expiresIn: "1h",
       });
-      res.cookie("token", token, cookieOptions).send({ status: true });
+
+      res.cookie("token", token, cookeOption).send({ success: true });
     });
-    app.get("/logout", (req, res) => {
-      const token = req.body.cookie;
+   app.post("/logout", async (req, res) => {
+      const user = req.body;
+    
       res
-        .clearCookie("token", { ...cookieOptions, maxAge: 0 })
-        .send({ status: true });
+        .clearCookie("token", { ...cookeOption, maxAge: 0 })
+        .send({ success: true });
     });
+   
 
     app.put("/update/:id", async (req, res) => {
       try {
@@ -131,11 +137,31 @@ async function run() {
       }
     });
 
-    app.get("/applied-job", async (req, res) => {
-      const result = await ApplyCollection.find().toArray();
+    app.get("/applied-job/:email", async (req, res) => {
+      const email = req.params.email
+      const query = {email:email}
+      const result = await ApplyCollection.find(query).toArray();
 
       res.send(result);
     });
+    //all user
+    app.post('/users',async(req,res)=>{
+      const user= req.body;
+      const query= {email:user?.email}
+      const existingUser = await usersCollection.findOne(query)
+      if(existingUser){
+        return res.status(200).send({message:'user Already Exist'})
+      }
+      const result = await usersCollection.insertOne(user)
+      res.send(result)
+    })
+
+    app.get('/users/:email',async(req,res)=>{
+      const email = req.params.email;
+      const query= {email:email}
+      const result = await usersCollection.findOne(query)
+      res.send(result)
+    })
 
     app.get("/jobs/:id", async (req, res) => {
       const job = req.params.id;
@@ -194,3 +220,6 @@ async function run() {
 run().catch(console.dir);
 
 app.listen(port, () => console.log(`listening port${port}`));
+
+
+// ('/users',(req,res)[post user]
